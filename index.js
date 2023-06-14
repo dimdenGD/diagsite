@@ -244,9 +244,18 @@ if(action === 'crawl') {
 
     function renderTree(tree) {
         let html = '';
+        loop:
         for(let node of tree) {
             let link = data[node.name];
             if(!link) continue;
+            if(ignoreLinks) {
+                for(let ignore of ignoreLinks) {
+                    if(node.name.includes(ignore)) {
+                        continue loop;
+                        break;
+                    }
+                }
+            }
             if(removeText) {
                 for(let textToRemove of removeText) {
                     link.text = link.text.replace(/\s+/g, ' ').replaceAll(textToRemove, '');
