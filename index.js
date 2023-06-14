@@ -62,6 +62,13 @@ if(action === 'crawl') {
     const c = new Crawler({
         maxConnections: 10,
         callback: function (error, res, done) {
+            let url = res?.request?.uri?.href;
+            if(url?.endsWith?.('/')) {
+                url = url.slice(0, -1);
+            }
+            if(!url || data[url]) {
+                return done();
+            }
             console.log(`Crawling ${res.request.uri.href}`);
             if(error) {
                 return console.error(error);
@@ -124,7 +131,7 @@ if(action === 'crawl') {
                 }
                 getComments(dom);
 
-                data[res.request.uri.href] = {
+                data[url] = {
                     text,
                     links,
                     images,
@@ -132,7 +139,7 @@ if(action === 'crawl') {
                 };
 
                 if(debug) {
-                    console.log(data[res.request.uri.href]);
+                    console.log(url, data[res.request.uri.href]);
                 }
 
                 fs.writeFileSync(outputFile, JSON.stringify(data));
@@ -151,5 +158,20 @@ if(action === 'crawl') {
     });
 
     c.queue(url);
-}
 
+    for(let link in data) {
+        if(data[link].links) {
+            loop:
+            for(let l of data[link].links) {
+                if(!data[l]) {
+                    if(ignoreLinks) {
+                        for(let ignore of ignoreLinks) {
+                            if(l.includes(ignore)) continue loop;
+                        }
+                    }
+                    c.queue(l);
+                }
+            }
+        }
+    } 
+}
