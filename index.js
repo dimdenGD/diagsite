@@ -33,6 +33,7 @@ if(action === 'crawl') {
     const removeElements = argv.r;
     const ignoreComments = fs.existsSync(argv.x) ? JSON.parse(fs.readFileSync(argv.x)) : null;
     const ignoreLinks = fs.existsSync(argv.i) ? JSON.parse(fs.readFileSync(argv.i)) : null;
+    const removeText = fs.existsSync(argv.t) ? JSON.parse(fs.readFileSync(argv.t)) : null;
     const debug = argv.d;
 
     if(!fs.existsSync(outputFile)) {
@@ -96,7 +97,7 @@ if(action === 'crawl') {
                     }
                 }
     
-                const text = dom.querySelector('body').innerText
+                let text = dom.querySelector('body').innerText
                     .trim()
                     .replace(/&nbsp;/g, ' ')
                     .replace(/&quot;/g, '"')
@@ -105,6 +106,13 @@ if(action === 'crawl') {
                     .replace(/&gt;/g, '>')
                     .replace(/&apos;/g, '\'')
                     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+
+                if(removeText) {
+                    for(let textToRemove of removeText) {
+                        text = text.replaceAll(textToRemove, '');
+                    }
+                }
+                
                 links = dom.querySelectorAll('a').map(link => link.getAttribute('href')).filter(u => {
                     if(!u) return false;
                     if(u.startsWith('#')) return false;
@@ -180,7 +188,10 @@ if(action === 'crawl') {
     if(!fs.existsSync(file)) {
         return console.log(`File ${file} does not exist`);
     }
-    let outputFile = argv.o || file.replace('.json', '.html');
+    const outputFile = argv.o || file.replace('.json', '.html');
+    const ignoreComments = fs.existsSync(argv.x) ? JSON.parse(fs.readFileSync(argv.x)) : null;
+    const ignoreLinks = fs.existsSync(argv.i) ? JSON.parse(fs.readFileSync(argv.i)) : null;
+    const removeText = fs.existsSync(argv.t) ? JSON.parse(fs.readFileSync(argv.t)) : null;
 
     let data = JSON.parse(fs.readFileSync(file));
     let tree = [];
@@ -236,6 +247,11 @@ if(action === 'crawl') {
         for(let node of tree) {
             let link = data[node.name];
             if(!link) continue;
+            if(removeText) {
+                for(let textToRemove of removeText) {
+                    link.text = link.text.replace(/\s+/g, ' ').replaceAll(textToRemove, '');
+                }
+            }
             html += `<div class="node"><a class="name" href="${node.name}" target="_blank">${node.name}</a><br>` +
                 `<span>${link.text}</span><br>`;
             if(node.children.length) {
