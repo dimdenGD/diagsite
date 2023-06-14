@@ -147,8 +147,8 @@ if(action === 'crawl') {
 
                 data[url] = {
                     text,
-                    links,
-                    images,
+                    links: [...new Set(links)],
+                    images: [...new Set(images)],
                     comments
                 };
 
