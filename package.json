@@ -1,0 +1,29 @@
+{
+  "name": "diagsite",
+  "version": "1.0.0",
+  "description": "Converts url into a HTML diagram",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dimdenGD/diagsite.git"
+  },
+  "keywords": [
+    "diagram",
+    "scraping",
+    "site"
+  ],
+  "author": "dimden",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dimdenGD/diagsite/issues"
+  },
+  "homepage": "https://github.com/dimdenGD/diagsite#readme",
+  "dependencies": {
+    "crawler": "^1.4.0",
+    "minimist": "^1.2.8",
+    "node-html-parser": "^6.1.5"
+  }
+}
