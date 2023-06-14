@@ -14,7 +14,8 @@ if(argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || ['crawl',
         -c <link>           Connects given URL to previously crawled link.
         -r <css selector>   Removes given CSS selector's elements
         -x <file>           Specify json array file with comments to ignore
-        -i <file>          Specify json array file with links to ignore
+        -i <file>           Specify json array file with links to ignore
+        -t <file>           Specify json file with text to remove
         -o <file>           Output file name
         -d                  Debug mode
         -h                  Prints this help message
@@ -174,4 +175,76 @@ if(action === 'crawl') {
             }
         }
     } 
+} else if(action === 'render') {
+    let file = argv._[1];
+    if(!fs.existsSync(file)) {
+        return console.log(`File ${file} does not exist`);
+    }
+    let outputFile = argv.o || file.replace('.json', '.html');
+
+    let data = JSON.parse(fs.readFileSync(file));
+    let tree = [];
+    // transform data to tree
+    for(let url in data) {
+        let node = {
+            name: url,
+            children: []
+        };
+        if(data[url].links) {
+            for(let link of data[url].links) {
+                node.children.push({
+                    name: link,
+                    children: []
+                });
+            }
+        }
+        tree.push(node);
+    }
+
+    let html = `
+    <html>
+        <head>
+            <style>
+                body {
+                    font-family: sans-serif;
+                }
+                .node {
+                    padding: 5px;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    margin: 5px;
+                    display: inline-block;
+                }
+                .node:hover {
+                    background-color: #eee;
+                }
+                .node .name {
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="tree">
+                ${renderTree(tree)}
+            </div>
+        </body>
+    </html>
+    `;
+
+    function renderTree(tree) {
+        let html = '';
+        for(let node of tree) {
+            let link = data[node.name];
+            if(!link) continue;
+            html += `<div class="node"><a class="name" href="${node.name}" target="_blank">${node.name}</a><br>` +
+                `<span>${link.text}</span><br>`;
+            if(node.children.length) {
+                html += `<div class="children">${renderTree(node.children)}</div>`;
+            }
+            html += '</div>';
+        }
+        return html;
+    }
+
+    fs.writeFileSync(outputFile, html);
 }
