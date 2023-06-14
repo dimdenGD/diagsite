@@ -14,6 +14,7 @@ if(argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || ['crawl',
         -c <link>           Connects given URL to previously crawled link.
         -r <css selector>   Removes given CSS selector's elements
         -x <file>           Specify json array file with comments to ignore
+        -i <file>          Specify json array file with links to ignore
         -o <file>           Output file name
         -d                  Debug mode
         -h                  Prints this help message
@@ -30,6 +31,7 @@ if(action === 'crawl') {
     const connectTo = argv.c;
     const removeElements = argv.r;
     const ignoreComments = fs.existsSync(argv.x) ? JSON.parse(fs.readFileSync(argv.x)) : null;
+    const ignoreLinks = fs.existsSync(argv.i) ? JSON.parse(fs.readFileSync(argv.i)) : null;
     const debug = argv.d;
 
     if(!fs.existsSync(outputFile)) {
@@ -95,7 +97,16 @@ if(action === 'crawl') {
                     .replace(/&gt;/g, '>')
                     .replace(/&apos;/g, '\'')
                     .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
-                links = dom.querySelectorAll('a').map(link => link.getAttribute('href')).filter(u => u);
+                links = dom.querySelectorAll('a').map(link => link.getAttribute('href')).filter(u => {
+                    if(!u) return false;
+                    if(u.startsWith('#')) return false;
+                    if(ignoreLinks) {
+                        for(let ignore of ignoreLinks) {
+                            if(u.includes(ignore)) return false;
+                        }
+                    }
+                    return true;
+                });
                 const images = dom.querySelectorAll('img').map(img => img.getAttribute('src')).filter(u => u);
                 const comments = [];
                 function getComments(el) {
