@@ -118,6 +118,11 @@ if(action === 'crawl') {
                     if(u.startsWith('#')) return false;
                     if(ignoreLinks) {
                         for(let ignore of ignoreLinks) {
+                            if(ignore.endsWith("$")) {
+                                if(u.endsWith(ignore.slice(0, -1))) {
+                                    return false;
+                                }
+                            }
                             if(u.includes(ignore)) return false;
                         }
                     }
@@ -232,6 +237,15 @@ if(action === 'crawl') {
                 .node .name {
                     font-weight: bold;
                 }
+                .comments {
+                    font-style: italic;
+                }
+                .images img {
+                    width: 50px;
+                    height: 50px;
+                    object-fit: cover;
+                    margin: 5px;
+                }
             </style>
         </head>
         <body>
@@ -250,9 +264,13 @@ if(action === 'crawl') {
             if(!link) continue;
             if(ignoreLinks) {
                 for(let ignore of ignoreLinks) {
+                    if(ignore.endsWith("$")) {
+                        if(node.name.endsWith(ignore.slice(0, -1))) {
+                            continue loop;
+                        }
+                    }
                     if(node.name.includes(ignore)) {
                         continue loop;
-                        break;
                     }
                 }
             }
@@ -262,7 +280,9 @@ if(action === 'crawl') {
                 }
             }
             html += `<div class="node"><a class="name" href="${node.name}" target="_blank">${node.name}</a><br>` +
-                `<span>${link.text}</span><br>`;
+                `<span class="text">${link.text}</span><br>` +
+                `<span class="comments">${link.comments.join('<br>')}</span><br>` +
+                `<span class="images">${link.images.map(i => `<a href="${i}" target="_blank"><img src="${i}"></a>`).join('')}</span><br>`;
             if(node.children.length) {
                 html += `<div class="children">${renderTree(node.children)}</div>`;
             }
