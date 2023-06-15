@@ -99,6 +99,10 @@ if(action === 'crawl') {
                         el.remove();
                     }
                 }
+
+                if(!dom.querySelector('body')) {
+                    return done();
+                }
     
                 let text = dom.querySelector('body').innerText
                     .trim()
