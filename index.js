@@ -5,19 +5,23 @@ const HTMLParser = require('node-html-parser');
 
 const argv = require('minimist')(process.argv.slice(2));
 
-if(argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || ['crawl', 'render', 'comment'].indexOf(argv._[0]) === -1) {
+if(argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || ['crawl', 'render', 'comment', 'clean'].indexOf(argv._[0]) === -1) {
     console.log(`Usage: node index.js [params] [options]
 
 Params:
     crawl   <url>           Crawls given URL and saves diagram data to file
     render  <file>          Renders diagram from file
     comment <url> <comment> Adds comment to URL in file
+    clean   <file> <text>   Removes all urls containing given text from file
+
+Ignore text file can end with $ to indicate that the text should be matched at the end of the url.
+Clean text file can start with ^ to indicate that the text should be matched at the start of the url.
 
 Options:
     -c <link>           Connects given URL to previously crawled link.
     -r <css selector>   Removes given CSS selector's elements
     -x <file>           Specify json array file with comments to ignore
-    -i <file>           Specify json array file with links to ignore/allow
+    -i <file>           Specify json array file with links to ignore
     -t <file>           Specify json file with text to remove
     -w <file>           Whitelist links
     -o <file>           Output file name
@@ -403,4 +407,34 @@ if(action === 'crawl') {
     fs.writeFileSync(outputFile, JSON.stringify(data));
 
     console.log(`Added comment "${comment}" to ${url}`);
+} else if(action === 'clean') {
+    let file = argv._[1];
+    if(!fs.existsSync(file)) {
+        return console.log(`File ${file} does not exist`);
+    }
+    let text = argv._.slice(2).join(' ');
+
+    let data = JSON.parse(fs.readFileSync(file));
+
+    let cleaned = 0;
+    for(let url in data) {
+        if(!data[url].text) continue;
+        let toStart = text.startsWith('^');
+        if(toStart) {
+            text = text.slice(1);
+        }
+        if(data[url].text.replace(/\s+/g, ' ')[toStart ? 'startsWith' : 'includes'](text)) {
+            delete data[url];
+            cleaned++;
+            for(let url2 in data) {
+                if(data[url2].links) {
+                    data[url2].links = data[url2].links.filter(l => l !== url);
+                }
+            }
+        }
+    }
+
+    fs.writeFileSync(file, JSON.stringify(data));
+
+    console.log(`Cleaned ${cleaned} links containing "${text}" from ${file}`);
 }
