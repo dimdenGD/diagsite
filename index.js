@@ -293,9 +293,10 @@ if(action === 'crawl') {
         tree.push(node);
     }
 
-    let html = `
+    let html = /*html*/`
     <html>
         <head>
+            <script src="https://d3js.org/d3.v7.min.js"></script>
             <style>
                 body {
                     font-family: sans-serif;
@@ -307,6 +308,7 @@ if(action === 'crawl') {
                     margin: 5px;
                     display: inline-block;
                     overflow: hidden;
+                    background-color: #fff;
                 }
                 .node:hover {
                     background-color: #eee;
@@ -327,12 +329,155 @@ if(action === 'crawl') {
                     font-style: italic;
                     font-weight: bold;
                 }
+                foreignObject { overflow: visible; }
             </style>
         </head>
         <body>
+            <div id="chart"></div>
             <div class="tree">
                 ${renderTree(tree)}
             </div>
+            <script>
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+
+                const tree = ${JSON.stringify(data)};
+                const data = {
+                    nodes: [],
+                    links: []
+                };
+                for(let url in tree) {
+                    let node = tree[url];
+                    data.nodes.push({
+                        id: url,
+                        group: 1
+                    });
+                    for(let child of node.links) {
+                        if(tree[child]) {
+                            data.links.push({
+                                source: url,
+                                target: child
+                            });
+                        }
+                    }
+                }
+
+                function chart() {
+                    // Specify the color scale.
+                    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+                    // The force simulation mutates links and nodes, so create a copy
+                    // so that re-evaluating this cell produces the same result.
+                    const links = data.links.map(d => ({...d}));
+                    const nodes = data.nodes.map(d => ({...d}));
+
+                    // Create a simulation with several forces.
+                    const simulation = d3.forceSimulation(nodes)
+                        .force("link", d3.forceLink(links).distance(l => {
+                            console.log(tree[l.target.id].links.length, Math.max(tree[l.target.id].links.length * 100, 100));
+                            return Math.max(tree[l.target.id].links.length * 150, 150);
+                        }).id(d => d.id))
+                        .force("charge", d3.forceManyBody().strength(-5000))
+                        .force("center", d3.forceCenter(width / 2, height / 2))
+                        .on("tick", ticked);
+
+                    // Create the SVG container.
+                    const svg = d3.create("svg")
+                        .attr("width", innerWidth)
+                        .attr("height", innerHeight)
+                        .attr("viewBox", [0, 0, width, height])
+                        .attr("style", "max-width: 100%; height: auto;")
+                        .call(d3.zoom().on("zoom", function (event) {
+                            node.attr("transform", event.transform)
+                            link.attr("transform", event.transform)
+                        }))
+
+                    // Add a line for each link, and a circle for each node.
+                    const link = svg.append("g")
+                        .attr("stroke", "#999")
+                        .attr("stroke-opacity", 0.6)
+                        .selectAll("line")
+                        .data(links)
+                        .join("line")
+
+                    const node = svg.append("g")
+                        .attr("stroke", "#fff")
+                        .attr("stroke-width", 1.5)
+                        .selectAll("foreignObject")
+                        .data(nodes)
+                        .join("foreignObject")
+                        .attr("width", 300)
+                        .attr("height", 300);
+
+                    node.append("xhtml:div")
+                        .append('div')
+                        .attr("class", "node")
+                        .attr("style", d => 'background-color: ' + color(d.group) + ')')
+                        .html(d => {
+                            let html = '<div class="name"><a target="_blank" href="' + d.id + '">'  + d.id + '</a></div>';
+                            if(tree[d.id].text) {
+                                html += '<div class="text">' + tree[d.id].text + '</div>';
+                            }
+                            if(tree[d.id].comments) {
+                                html += '<div class="comments">' + tree[d.id].comments + '</div>';
+                            }
+                            if(tree[d.id].images) {
+                                html += '<div class="images">';
+                                for(let image of tree[d.id].images) {
+                                    html += '<img src="' + image + '">';
+                                }
+                                html += '</div>';
+                            }
+                            if(tree[d.id].authorComments) {
+                                html += '<div class="author-comments">' + tree[d.id].authorComments + '</div>';
+                            }
+                            return html;
+                        });
+
+                    // Add a drag behavior.
+                    node.call(d3.drag()
+                            .on("start", dragstarted)
+                            .on("drag", dragged)
+                            .on("end", dragended));
+
+                    // Set the position attributes of links and nodes each time the simulation ticks.
+                    function ticked() {
+                        link
+                            .attr("x1", d => d.source.x)
+                            .attr("y1", d => d.source.y)
+                            .attr("x2", d => d.target.x)
+                            .attr("y2", d => d.target.y);
+
+                        node
+                            .attr("x", d => d.x - 100 / 2)
+                            .attr("y", d => d.y - 100 / 2);
+                    }
+
+                    // Reheat the simulation when drag starts, and fix the subject position.
+                    function dragstarted(event) {
+                        if (!event.active) simulation.alphaTarget(1).restart();
+                        event.subject.fx = event.subject.x;
+                        event.subject.fy = event.subject.y;
+                    }
+
+                    // Update the subject (dragged node) position during drag.
+                    function dragged(event) {
+                        event.subject.fx = event.x;
+                        event.subject.fy = event.y;
+                    }
+
+                    // Restore the target alpha so the simulation cools after dragging ends.
+                    // Unfix the subject position now that it’s no longer being dragged.
+                    function dragended(event) {
+                        if (!event.active) simulation.alphaTarget(0);
+                        event.subject.fx = null;
+                        event.subject.fy = null;
+                    }
+
+                    return svg.node();
+                }
+                document.getElementById("chart").appendChild(chart());
+            </script>
         </body>
     </html>
     `;

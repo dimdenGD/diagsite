@@ -9,6 +9,7 @@ Params:
     render  <file>          Renders diagram from file
     comment <url> <comment> Adds comment to URL in file
     clean   <file> <text>   Removes all urls containing given text from file
+    restore <file>          Restores file to previous version
 
 Ignore text file can end with $ to indicate that the text should be matched at the end of the url.
 Clean text file can start with ^ to indicate that the text should be matched at the start of the url.
