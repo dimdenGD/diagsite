@@ -207,7 +207,8 @@ if(action === 'crawl') {
             children: []
         };
         if(data[url].links) {
-            for(let link of data[url].links) {
+            let links = [...new Set(data[url].links)];
+            for(let link of links) {
                 node.children.push({
                     name: link,
                     children: []
@@ -230,6 +231,7 @@ if(action === 'crawl') {
                     border-radius: 5px;
                     margin: 5px;
                     display: inline-block;
+                    overflow: hidden;
                 }
                 .node:hover {
                     background-color: #eee;
@@ -256,7 +258,7 @@ if(action === 'crawl') {
     </html>
     `;
 
-    function renderTree(tree) {
+    function renderTree(tree, i = 1) {
         let html = '';
         loop:
         for(let node of tree) {
@@ -279,12 +281,12 @@ if(action === 'crawl') {
                     link.text = link.text.replace(/\s+/g, ' ').replaceAll(textToRemove, '');
                 }
             }
-            html += `<div class="node"><a class="name" href="${node.name}" target="_blank">${node.name}</a><br>` +
+            html += `<div class="node" ${i === 1 ? `id="${node.name}"` : ''}><a class="name" href="${node.name}" target="_blank">${node.name}</a> ${i !== 1 ? `<a href="#${node.name}">[node]</a>` : ''}<br>` +
                 `<span class="text">${link.text}</span><br>` +
                 `<span class="comments">${link.comments.join('<br>')}</span><br>` +
                 `<span class="images">${link.images.map(i => `<a href="${i}" target="_blank"><img src="${i}"></a>`).join('')}</span><br>`;
             if(node.children.length) {
-                html += `<div class="children">${renderTree(node.children)}</div>`;
+                html += `<div class="children">${renderTree(node.children, i+1)}</div>`;
             }
             html += '</div>';
         }
