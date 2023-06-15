@@ -17,8 +17,9 @@ Options:
     -c <link>           Connects given URL to previously crawled link.
     -r <css selector>   Removes given CSS selector's elements
     -x <file>           Specify json array file with comments to ignore
-    -i <file>           Specify json array file with links to ignore
+    -i <file>           Specify json array file with links to ignore/allow
     -t <file>           Specify json file with text to remove
+    -w <file>           Whitelist links
     -o <file>           Output file name
     -d                  Debug mode
     -h                  Prints this help message
@@ -37,6 +38,7 @@ if(action === 'crawl') {
     const ignoreComments = fs.existsSync(argv.x) ? JSON.parse(fs.readFileSync(argv.x)) : null;
     const ignoreLinks = fs.existsSync(argv.i) ? JSON.parse(fs.readFileSync(argv.i)) : null;
     const removeText = fs.existsSync(argv.t) ? JSON.parse(fs.readFileSync(argv.t)) : null;
+    const whitelist = fs.existsSync(argv.w) ? JSON.parse(fs.readFileSync(argv.w)) : null;
     const debug = argv.d;
 
     if(!fs.existsSync(outputFile)) {
@@ -123,6 +125,7 @@ if(action === 'crawl') {
                 links = dom.querySelectorAll('a').map(link => link.getAttribute('href')).filter(u => {
                     if(!u) return false;
                     if(u.startsWith('#')) return false;
+                    if(u.startsWith('javascript:')) return false;
                     if(ignoreLinks) {
                         for(let ignore of ignoreLinks) {
                             if(ignore.endsWith("$")) {
@@ -133,7 +136,25 @@ if(action === 'crawl') {
                             if(u.includes(ignore)) return false;
                         }
                     }
+                    if(whitelist) {
+                        let match = false;
+                        for(let link of whitelist) {
+                            if(u.includes(link)) {
+                                match = true;
+                                break;
+                            }
+                        }
+                        if(!match) return false;
+                    }
                     return true;
+                }).map(u => {
+                    if(!u.startsWith('http')) {
+                        if(u.startsWith('/')) {
+                            return `${parsedUrl.protocol}//${parsedUrl.host}${u}`;
+                        } else {
+                            return `${url}/${u}`;
+                        }
+                    }
                 });
                 const images = dom.querySelectorAll('img').map(img => img.getAttribute('src')).filter(u => u);
                 const comments = [];
@@ -184,12 +205,35 @@ if(action === 'crawl') {
         if(data[link].links) {
             loop:
             for(let l of data[link].links) {
+                if(!l) continue;
+                if(l.startsWith('#')) continue;
+                if(l.startsWith('javascript:')) continue;
+
+                if(!l.startsWith('http')) {
+                    if(l.startsWith('/')) {
+                        let parsedUrl = URL.parse(link);
+                        l = `${parsedUrl.protocol}//${parsedUrl.host}${l}`;
+                    } else {
+                        l = `${link}/${l}`;
+                    }
+                }
                 if(!data[l]) {
                     if(ignoreLinks) {
                         for(let ignore of ignoreLinks) {
                             if(l.includes(ignore)) continue loop;
                         }
                     }
+                    if(whitelist) {
+                        let match = false;
+                        for(let ignore of whitelist) {
+                            if(l.includes(ignore)) {
+                                match = true;
+                                break;
+                            }
+                        }
+                        if(!match) continue loop;
+                    }
+                    console.log(`Adding ${l} to queue`);
                     c.queue(l);
                 }
             }
@@ -204,6 +248,7 @@ if(action === 'crawl') {
     const ignoreComments = fs.existsSync(argv.x) ? JSON.parse(fs.readFileSync(argv.x)) : null;
     const ignoreLinks = fs.existsSync(argv.i) ? JSON.parse(fs.readFileSync(argv.i)) : null;
     const removeText = fs.existsSync(argv.t) ? JSON.parse(fs.readFileSync(argv.t)) : null;
+    const whitelist = fs.existsSync(argv.w) ? JSON.parse(fs.readFileSync(argv.w)) : null;
 
     let data = JSON.parse(fs.readFileSync(file));
     let tree = [];
@@ -216,6 +261,18 @@ if(action === 'crawl') {
         if(data[url].links) {
             let links = [...new Set(data[url].links)];
             for(let link of links) {
+                if(!link) continue;
+                if(link.startsWith('#')) continue;
+                if(link.startsWith('javascript:')) continue;
+
+                if(!link.startsWith('http')) {
+                    if(link.startsWith('/')) {
+                        let parsedUrl = URL.parse(url);
+                        link = `${parsedUrl.protocol}//${parsedUrl.host}${link}`;
+                    } else {
+                        link = `${url}/${link}`;
+                    }
+                }
                 node.children.push({
                     name: link,
                     children: []
@@ -286,6 +343,16 @@ if(action === 'crawl') {
                         continue loop;
                     }
                 }
+            }
+            if(whitelist) {
+                let match = false;
+                for(let ignore of whitelist) {
+                    if(node.name.includes(ignore)) {
+                        match = true;
+                        break;
+                    }
+                }
+                if(!match) continue loop;
             }
             if(ignoreComments) {
                 link.comments = link.comments.filter(c => ignoreComments.indexOf(c) === -1);

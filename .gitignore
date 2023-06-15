@@ -3,3 +3,4 @@ node_modules/
 comments.json
 links.json
 text.json
+whitelistlinks.json
