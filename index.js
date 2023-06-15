@@ -5,7 +5,10 @@ const HTMLParser = require('node-html-parser');
 
 const argv = require('minimist')(process.argv.slice(2));
 
-if(argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || ['crawl', 'render', 'comment', 'clean'].indexOf(argv._[0]) === -1) {
+if(
+    argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || 
+    ['crawl', 'render', 'comment', 'clean', 'restore', 'revert', 'undo', 'reverse', 'prev'].indexOf(argv._[0]) === -1
+) {
     console.log(`Usage: node index.js [params] [options]
 
 Params:
@@ -13,6 +16,7 @@ Params:
     render  <file>          Renders diagram from file
     comment <url> <comment> Adds comment to URL in file
     clean   <file> <text>   Removes all urls containing given text from file
+    restore <file>          Restores file to previous version
 
 Ignore text file can end with $ to indicate that the text should be matched at the end of the url.
 Clean text file can start with ^ to indicate that the text should be matched at the start of the url.
@@ -53,6 +57,8 @@ if(action === 'crawl') {
     }
 
     let data = JSON.parse(fs.readFileSync(outputFile));
+
+    fs.writeFileSync(`${outputFile}.prev`, JSON.stringify(data));
 
     if(connectTo) {
         if(!data[connectTo]) {
@@ -159,6 +165,7 @@ if(action === 'crawl') {
                             return `${url}/${u}`;
                         }
                     }
+                    return u;
                 });
                 const images = dom.querySelectorAll('img').map(img => img.getAttribute('src')).filter(u => u);
                 const comments = [];
@@ -393,6 +400,8 @@ if(action === 'crawl') {
 
     let data = JSON.parse(fs.readFileSync(outputFile));
 
+    fs.writeFileSync(outputFile+'.prev', JSON.stringify(data));
+
     if(!data[url]) {
         return console.log(`No data for ${url}`);
     }
@@ -416,6 +425,8 @@ if(action === 'crawl') {
 
     let data = JSON.parse(fs.readFileSync(file));
 
+    fs.writeFileSync(file+'.prev', JSON.stringify(data));
+
     let cleaned = 0;
     for(let url in data) {
         if(!data[url].text) continue;
@@ -437,4 +448,13 @@ if(action === 'crawl') {
     fs.writeFileSync(file, JSON.stringify(data));
 
     console.log(`Cleaned ${cleaned} links containing "${text}" from ${file}`);
+} else if(action === 'restore' || action === 'undo' || action === 'revert' || action === 'prev' || action === 'reverse') {
+    let file = argv._[1];
+    if(!fs.existsSync(file+'.prev')) {
+        return console.log(`File ${file}.prev does not exist`);
+    }
+
+    fs.copyFileSync(file+'.prev', file);
+
+    console.log(`Restored ${file} from ${file}.prev`);
 }
