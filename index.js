@@ -5,20 +5,23 @@ const HTMLParser = require('node-html-parser');
 
 const argv = require('minimist')(process.argv.slice(2));
 
-if(argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || ['crawl', 'render'].indexOf(argv._[0]) === -1) {
-    console.log(`Usage: node index.js <crawl/render> <url/file> [options]
-    crawl  Crawls given URL and saves diagram data to file
-    render Renders diagram from file
+if(argv._.length < 2 || argv.h || argv.help || argv._[0] === 'help' || ['crawl', 'render', 'comment'].indexOf(argv._[0]) === -1) {
+    console.log(`Usage: node index.js [params] [options]
 
-    Options:
-        -c <link>           Connects given URL to previously crawled link.
-        -r <css selector>   Removes given CSS selector's elements
-        -x <file>           Specify json array file with comments to ignore
-        -i <file>           Specify json array file with links to ignore
-        -t <file>           Specify json file with text to remove
-        -o <file>           Output file name
-        -d                  Debug mode
-        -h                  Prints this help message
+Params:
+    crawl   <url>           Crawls given URL and saves diagram data to file
+    render  <file>          Renders diagram from file
+    comment <url> <comment> Adds comment to URL in file
+
+Options:
+    -c <link>           Connects given URL to previously crawled link.
+    -r <css selector>   Removes given CSS selector's elements
+    -x <file>           Specify json array file with comments to ignore
+    -i <file>           Specify json array file with links to ignore
+    -t <file>           Specify json file with text to remove
+    -o <file>           Output file name
+    -d                  Debug mode
+    -h                  Prints this help message
 `);
     return;
 }
@@ -248,6 +251,10 @@ if(action === 'crawl') {
                     object-fit: cover;
                     margin: 5px;
                 }
+                .author-comments {
+                    font-style: italic;
+                    font-weight: bold;
+                }
             </style>
         </head>
         <body>
@@ -276,6 +283,9 @@ if(action === 'crawl') {
                     }
                 }
             }
+            if(ignoreComments) {
+                link.comments = link.comments.filter(c => ignoreComments.indexOf(c) === -1);
+            }
             if(removeText) {
                 for(let textToRemove of removeText) {
                     link.text = link.text.replace(/\s+/g, ' ').replaceAll(textToRemove, '');
@@ -283,8 +293,9 @@ if(action === 'crawl') {
             }
             html += `<div class="node" ${i === 1 ? `id="${node.name}"` : ''}><a class="name" href="${node.name}" target="_blank">${node.name}</a> ${i !== 1 ? `<a href="#${node.name}">[node]</a>` : ''}<br>` +
                 `<span class="text">${link.text}</span><br>` +
-                `<span class="comments">${link.comments.join('<br>')}</span><br>` +
-                `<span class="images">${link.images.map(i => `<a href="${i}" target="_blank"><img src="${i}"></a>`).join('')}</span><br>`;
+                (link.authorComments && link.authorComments.length > 0 ? `<span class="author-comments">${link.authorComments.join('<br>')}</span><br>` : '') +
+                (link.comments.length > 0 ? `<span class="comments">${link.comments.join('<br>')}</span><br>` : '') +
+                (link.images.length > 0 ? `<span class="images">${link.images.map(i => `<a href="${i}" target="_blank"><img src="${i}"></a>`).join('')}</span><br>` : '');
             if(node.children.length) {
                 html += `<div class="children">${renderTree(node.children, i+1)}</div>`;
             }
@@ -294,4 +305,31 @@ if(action === 'crawl') {
     }
 
     fs.writeFileSync(outputFile, html);
+
+    console.log(`Rendered ${file} to ${outputFile}`);
+} else if(action === 'comment') {
+    const url = argv._[1];
+    const parsedUrl = URL.parse(url);
+    const outputFile = argv.o || `${parsedUrl.hostname}.json`;
+
+    if(!fs.existsSync(outputFile)) {
+        return console.log(`File ${outputFile} does not exist`);
+    }
+
+    let data = JSON.parse(fs.readFileSync(outputFile));
+
+    if(!data[url]) {
+        return console.log(`No data for ${url}`);
+    }
+
+    if(!data[url].authorComments) {
+        data[url].authorComments = [];
+    }
+
+    let comment = argv._.slice(2).join(' ');
+    data[url].authorComments.push(comment);
+
+    fs.writeFileSync(outputFile, JSON.stringify(data));
+
+    console.log(`Added comment "${comment}" to ${url}`);
 }
