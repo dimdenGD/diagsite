@@ -374,10 +374,9 @@ if(action === 'crawl') {
                     // Create a simulation with several forces.
                     const simulation = d3.forceSimulation(nodes)
                         .force("link", d3.forceLink(links).distance(l => {
-                            console.log(tree[l.target.id].links.length, Math.max(tree[l.target.id].links.length * 100, 100));
-                            return Math.max(tree[l.target.id].links.length * 150, 150);
+                            return Math.max(tree[l.target.id].links.length * 200, 200);
                         }).id(d => d.id))
-                        .force("charge", d3.forceManyBody().strength(-5000))
+                        .force("charge", d3.forceManyBody().strength(-5000).distanceMax(5000))
                         .force("center", d3.forceCenter(width / 2, height / 2))
                         .on("tick", ticked);
 
@@ -392,6 +391,22 @@ if(action === 'crawl') {
                             link.attr("transform", event.transform)
                         }))
 
+                    // add arrow markers
+                    svg.append("defs").selectAll("marker")
+                        .data(["end"])
+                        .join("marker")
+                        .attr("id", "marker")
+                        .attr("viewBox", "0 -5 10 10")
+                        .attr("refX", 100)
+                        .attr("refY", 0)
+                        .attr("markerWidth", 20)
+                        .attr("markerHeight", 20)
+                        .attr("orient", "auto")
+                        .append("path")
+                        .attr("fill", "#999")
+                        .attr("d", "M0,-5L10,0L0,5");
+
+
                     // Add a line for each link, and a circle for each node.
                     const link = svg.append("g")
                         .attr("stroke", "#999")
@@ -399,6 +414,7 @@ if(action === 'crawl') {
                         .selectAll("line")
                         .data(links)
                         .join("line")
+                        .attr("marker-end", "url(#marker)");
 
                     const node = svg.append("g")
                         .attr("stroke", "#fff")
@@ -406,8 +422,8 @@ if(action === 'crawl') {
                         .selectAll("foreignObject")
                         .data(nodes)
                         .join("foreignObject")
-                        .attr("width", 300)
-                        .attr("height", 300);
+                        .attr("width", 200)
+                        .attr("height", 200);
 
                     node.append("xhtml:div")
                         .append('div')
