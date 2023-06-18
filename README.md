@@ -22,6 +22,7 @@ Options:
     -t <file>           Specify json file with text to remove
     -w <file>           Whitelist links
     -o <file>           Output file name
+    -m                  Treat url as array of urls split by comma
     -d                  Debug mode
     -h                  Prints this help message
 ```

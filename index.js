@@ -29,6 +29,7 @@ Options:
     -t <file>           Specify json file with text to remove
     -w <file>           Whitelist links
     -o <file>           Output file name
+    -m                  Treat url as array of urls split by comma
     -d                  Debug mode
     -h                  Prints this help message
 `);
@@ -48,6 +49,7 @@ if(action === 'crawl') {
     const removeText = fs.existsSync(argv.t) ? JSON.parse(fs.readFileSync(argv.t)) : null;
     const whitelist = fs.existsSync(argv.w) ? JSON.parse(fs.readFileSync(argv.w)) : null;
     const debug = argv.d;
+    const array = argv.m;
 
     if(!fs.existsSync(outputFile)) {
         if(connectTo) {
@@ -210,7 +212,14 @@ if(action === 'crawl') {
         }
     });
 
-    c.queue(url);
+    if(array) {
+        let urls = url.split(',');
+        for(let u of urls) {
+            c.queue(u);
+        }
+    } else {
+        c.queue(url);
+    }
 
     for(let link in data) {
         if(data[link].links) {
